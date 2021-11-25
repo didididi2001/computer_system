@@ -74,19 +74,19 @@ module ID(
     assign {
         wb_id_we,
         wb_id_waddr,
-        wb_id_wdata,
+        wb_id_wdata
     } = wb_to_id;
 
     assign {
         mem_id_we,
         mem_id_waddr,
-        mem_id_wdata,
+        mem_id_wdata
     } = mem_to_id;
 
     assign {
         ex_id_we,
         ex_id_waddr,
-        ex_id_wdata,
+        ex_id_wdata
     } = ex_to_id;
 
     wire [5:0] opcode;
@@ -132,8 +132,8 @@ module ID(
     );
     
   
-    assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1))
-    assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2))
+    assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1));
+    assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2));
 
     assign opcode = inst[31:26];
     assign rs = inst[25:21];
