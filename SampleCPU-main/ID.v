@@ -1,5 +1,6 @@
 `include "lib/defines.vh"
 module ID(
+
     input wire clk,
     input wire rst,
     // input wire flush,
@@ -13,38 +14,25 @@ module ID(
 
     input wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,
 
-
-    input wire [37:0] ex_to_id,
-    input wire [37:0] mem_to_id,
-    input wire [37:0] wb_to_id,
-
-
     output wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
 
-    output wire [`BR_WD-1:0] br_bus 
+    output wire [`BR_WD-1:0] br_bus,
+    ///定向  自己添加的
+    input wire [37:0] ex_to_id_bus,
+    input wire [37:0] mem_to_id_bus,
+    input wire [37:0] wb_to_id_bus
 );
 
     reg [`IF_TO_ID_WD-1:0] if_to_id_bus_r;
     wire [31:0] inst;
     wire [31:0] id_pc;
     wire ce;
-
+   
     wire wb_rf_we;
     wire [4:0] wb_rf_waddr;
     wire [31:0] wb_rf_wdata;
-
-    wire wb_id_we;
-    wire [4:0] wb_id_waddr;
-    wire [31:0] wb_id_wdata;
-
-    wire mem_id_we;
-    wire [4:0] mem_id_waddr;
-    wire [31:0] mem_id_wdata;
-
-    wire ex_id_we;
-    wire [4:0] ex_id_waddr;
-    wire [31:0] ex_id_wdata;
-
+    
+    
     always @ (posedge clk) begin
         if (rst) begin
             if_to_id_bus_r <= `IF_TO_ID_WD'b0;        
@@ -115,10 +103,6 @@ module ID(
     wire [2:0] sel_rf_dst;
 
     wire [31:0] rdata1, rdata2;
-    wire [31:0] rdata11, rdata22;
-
-
-
 
     regfile u_regfile(
     	.clk    (clk    ),
@@ -188,7 +172,7 @@ module ID(
         .out (rt_d )
     );
 
-    
+    //指令集独热编码
     assign inst_ori     = op_d[6'b00_1101];
     assign inst_lui     = op_d[6'b00_1111];
     assign inst_addiu   = op_d[6'b00_1001];
@@ -209,7 +193,7 @@ module ID(
     assign sel_alu_src1[1] = inst_jal;
 
     // sa_zero_extend to reg1
-    assign sel_alu_src1[2] = 1'b0;
+    assign sel_alu_src1[2] = inst_sll;
 
     
     // rt to reg2
@@ -234,10 +218,10 @@ module ID(
     assign op_nor = 1'b0;
     assign op_or = inst_ori | inst_or;
     assign op_xor = 1'b0;
-    assign op_sll = 1'b0;
+    assign op_sll = inst_sll;
     assign op_srl = 1'b0;
     assign op_sra = 1'b0;
-    assign op_lui = inst_lui;
+    assign op_lui = inst_lui; 
 
     assign alu_op = {op_add, op_sub, op_slt, op_sltu,
                      op_and, op_nor, op_or, op_xor,
@@ -268,10 +252,14 @@ module ID(
     assign rf_waddr = {5{sel_rf_dst[0]}} & rd 
                     | {5{sel_rf_dst[1]}} & rt
                     | {5{sel_rf_dst[2]}} & 32'd31;
-    
+
     // 0 from alu_res ; 1 from ld_res
     assign sel_rf_res = 1'b0; 
-
+    
+    //
+    wire [31:0] rdata11;
+    wire [31:0] rdata22;
+    //
     assign id_to_ex_bus = {
         id_pc,          // 158:127
         inst,           // 126:95
@@ -287,6 +275,30 @@ module ID(
         rdata22          // 31:0
     };
 
+    //zxy zxy zxy zxy zxy zxy zxy
+    wire ex_id_we;
+    wire [4:0] ex_id_waddr;
+    wire [31:0] ex_id_wdata;
+    wire mem_id_we;
+    wire [4:0] mem_id_waddr;
+    wire [31:0] mem_id_wdata;
+    wire wb_id_we;
+    wire [4:0] wb_id_waddr;
+    wire [31:0] wb_id_wdata;
+    assign ex_id_we=ex_to_id_bus[37];
+    assign ex_id_waddr=ex_to_id_bus[36:32];
+    assign ex_id_wdata=ex_to_id_bus[31:0];
+    assign mem_id_we=mem_to_id_bus[37];
+    assign mem_id_waddr=mem_to_id_bus[36:32];
+    assign mem_id_wdata=mem_to_id_bus[31:0];
+    assign wb_id_we=wb_to_id_bus[37];
+    assign wb_id_waddr=wb_to_id_bus[36:32];
+    assign wb_id_wdata=wb_to_id_bus[31:0];
+    /////////////////////////////
+    //////////////////////
+    assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1));
+    assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2));
+    ////////////////////////
 
     wire br_e;
     wire [31:0] br_addr;
