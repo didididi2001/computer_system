@@ -12,13 +12,11 @@ module EX(
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
     output wire [31:0] data_sram_addr,
-        
-        
-        
-    output wire [37:0] ex_to_id,
-    
+    output wire [31:0] data_sram_wdata,
 
-    output wire [31:0] data_sram_wdata
+
+    //自己添加的
+    output wire [37:0] ex_to_id
 );
 
     reg [`ID_TO_EX_WD-1:0] id_to_ex_bus_r;
@@ -98,10 +96,13 @@ module EX(
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
+
+
+    
     assign  ex_to_id =
-    {   rf_we,          // 37
-        rf_waddr,       // 36:32
-        ex_result       // 31:0
+    {   rf_we,          // 37 是否写
+        rf_waddr,       // 36:32 地址
+        ex_result       // 31:0 结果
     };
     
 endmodule
