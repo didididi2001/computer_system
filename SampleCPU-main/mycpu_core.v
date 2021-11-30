@@ -29,6 +29,9 @@ module mycpu_core(
     wire [`DATA_SRAM_WD-1:0] ex_dt_sram_bus;
     wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus;
     wire [`StallBus-1:0] stall;
+    wire stallreq_from_id;
+    wire stallreq_from_ex;
+    wire ex_is_load;
 
 
     IF u_IF(
@@ -52,15 +55,20 @@ module mycpu_core(
     	.clk             (clk             ),
         .rst             (rst             ),
         .stall           (stall           ),
+        .ex_is_load      (ex_is_load      ),
         .stallreq        (stallreq        ),
         .if_to_id_bus    (if_to_id_bus    ),
         .inst_sram_rdata (inst_sram_rdata ),
         .wb_to_rf_bus    (wb_to_rf_bus    ),
         .id_to_ex_bus    (id_to_ex_bus    ),
         .br_bus          (br_bus          ),
+<<<<<<< Updated upstream
         .ex_to_id_bus    (ex_to_id        ),
         .mem_to_id_bus   (mem_to_id       ),
         .wb_to_id_bus    (wb_to_id        )
+=======
+        .stallreq_from_id(stallreq_from_id)
+>>>>>>> Stashed changes
     );
 
     EX u_EX(
@@ -72,8 +80,15 @@ module mycpu_core(
         .data_sram_en    (data_sram_en    ),
         .data_sram_wen   (data_sram_wen   ),
         .data_sram_addr  (data_sram_addr  ),
+<<<<<<< Updated upstream
         .data_sram_wdata (data_sram_wdata ),       
         .ex_to_id        (ex_to_id        )
+=======
+        .ex_to_id        (ex_to_id        ),
+        .data_sram_wdata (data_sram_wdata ),
+        .stallreq_from_ex(stallreq_from_ex),
+        .ex_is_load      (ex_is_load      )
+>>>>>>> Stashed changes
     );
 
     MEM u_MEM(
@@ -101,6 +116,8 @@ module mycpu_core(
 
     CTRL u_CTRL(
     	.rst   (rst   ),
+        .stallreq_from_ex  (stallreq_from_ex  ),
+        .stallreq_from_id  (stallreq_from_id  ),
         .stall (stall )
     );
     

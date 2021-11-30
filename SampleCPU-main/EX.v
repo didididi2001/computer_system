@@ -12,13 +12,21 @@ module EX(
     output wire data_sram_en,
     output wire [3:0] data_sram_wen,
     output wire [31:0] data_sram_addr,
+<<<<<<< Updated upstream
     output wire [31:0] data_sram_wdata,
 
 
     //自己添加的
     output wire [37:0] ex_to_id
+=======
+    output wire [37:0] ex_to_id,
+    output wire [31:0] data_sram_wdata,
+    output wire stallreq_from_ex,
+    output wire ex_is_load
+    
+>>>>>>> Stashed changes
 );
-
+   
     reg [`ID_TO_EX_WD-1:0] id_to_ex_bus_r;
 
     always @ (posedge clk) begin
@@ -35,6 +43,8 @@ module EX(
             id_to_ex_bus_r <= id_to_ex_bus;
         end
     end
+    
+    
 
     wire [31:0] ex_pc, inst;
     wire [11:0] alu_op;
@@ -63,6 +73,10 @@ module EX(
         rf_rdata2          // 31:0
     } = id_to_ex_bus_r;
 
+    
+    assign ex_is_load = (inst[31:26] == 6'b10_0011) ? 1'b1 : 1'b0;
+
+
     wire [31:0] imm_sign_extend, imm_zero_extend, sa_zero_extend;
     assign imm_sign_extend = {{16{inst[15]}},inst[15:0]};
     assign imm_zero_extend = {16'b0, inst[15:0]};
@@ -84,8 +98,9 @@ module EX(
         .alu_src2    (alu_src2    ),
         .alu_result  (alu_result  )
     );
-
+    
     assign ex_result = alu_result;
+
 
     assign ex_to_mem_bus = {
         ex_pc,          // 75:44
@@ -104,5 +119,8 @@ module EX(
         rf_waddr,       // 36:32 地址
         ex_result       // 31:0 结果
     };
-    
+    assign data_sram_en = data_ram_en;
+    assign data_sram_wen = data_ram_wen;
+    assign data_sram_addr = ex_result;
+    assign data_sram_wdata = rf_rdata2;
 endmodule

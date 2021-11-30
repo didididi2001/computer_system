@@ -4,7 +4,7 @@ module ID(
     input wire rst,
     // input wire flush,
     input wire [`StallBus-1:0] stall,
-    
+    input wire ex_is_load,
     output wire stallreq,
 
     input wire [`IF_TO_ID_WD-1:0] if_to_id_bus,
@@ -13,25 +13,39 @@ module ID(
 
     input wire [`WB_TO_RF_WD-1:0] wb_to_rf_bus,
 
+
+    input wire [37:0] ex_to_id,
+    input wire [37:0] mem_to_id,
+    input wire [37:0] wb_to_id,
+
+
     output wire [`ID_TO_EX_WD-1:0] id_to_ex_bus,
 
     output wire [`BR_WD-1:0] br_bus,
-    ///定向  自己添加的
-    input wire [37:0] ex_to_id_bus,
-    input wire [37:0] mem_to_id_bus,
-    input wire [37:0] wb_to_id_bus
+    output wire stallreq_from_id
 );
 
     reg [`IF_TO_ID_WD-1:0] if_to_id_bus_r;
     wire [31:0] inst;
     wire [31:0] id_pc;
     wire ce;
-   
+    
     wire wb_rf_we;
     wire [4:0] wb_rf_waddr;
     wire [31:0] wb_rf_wdata;
-    
-    
+
+    wire wb_id_we;
+    wire [4:0] wb_id_waddr;
+    wire [31:0] wb_id_wdata;
+
+    wire mem_id_we;
+    wire [4:0] mem_id_waddr;
+    wire [31:0] mem_id_wdata;
+
+    wire ex_id_we;
+    wire [4:0] ex_id_waddr;
+    wire [31:0] ex_id_wdata;
+
     always @ (posedge clk) begin
         if (rst) begin
             if_to_id_bus_r <= `IF_TO_ID_WD'b0;        
@@ -104,6 +118,10 @@ module ID(
     wire [2:0] sel_rf_dst;
 
     wire [31:0] rdata1, rdata2;
+    wire [31:0] rdata11, rdata22;
+
+
+
 
     regfile u_regfile(
     	.clk    (clk    ),
@@ -149,7 +167,12 @@ module ID(
             //则触发地址错例外，否则据此虚地址从存储器中读取连续 4 个字节的值，写入到 rt 寄存器中。
     inst_or,    //寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或，结果写入寄存器 rd 中
     inst_sll,   //由立即数 sa 指定移位量，对寄存器 rt 的值进行逻辑左移，结果写入寄存器 rd 中。
-    inst_addu;//将寄存器 rs 的值与寄存器 rt 的值相加，结果写入 rd 寄存器中 
+    inst_addu,//将寄存器 rs 的值与寄存器 rt 的值相加，结果写入 rd 寄存器中 
+    inst_bne,//如果寄存器 rs 的值不等于寄存器 rt 的值则转移，否则顺序执行。转移目标由立即数 offset 左移 2
+              //位并进行有符号扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到
+    inst_xor,//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑异或，结果写入寄存器 rd 中。
+    inst_xori,//寄存器 rs 中的值与 0 扩展至 32 位的立即数 imm 按位逻辑异或，结果写入寄存器 rt 中。
+    inst_nor;//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或非，结果写入寄存器 rd 中。
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
@@ -174,7 +197,7 @@ module ID(
         .out (rt_d )
     );
 
-    //指令集独热编码
+    
     assign inst_ori     = op_d[6'b00_1101];
     assign inst_lui     = op_d[6'b00_1111];
     assign inst_addiu   = op_d[6'b00_1001];
@@ -186,10 +209,13 @@ module ID(
     assign inst_addu    = op_d[6'b00_0000] && func_d[6'b10_0001];
     assign inst_or      = op_d[6'b00_0000] && func_d[6'b10_0101];
     assign inst_sll     = op_d[6'b00_0000] && func_d[6'b00_0000];
-
-
+    assign inst_bne     = op_d[6'b00_0101];
+    assign inst_xor     = op_d[6'b00_0000] && func_d[6'b10_0110];
+    assign inst_xori    = op_d[6'b00_1110];
+    assign inst_nor     = op_d[6'b00_0000] && func_d[6'b10_0111];
+    
     // rs to reg1
-    assign sel_alu_src1[0] = inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | inst_or;
+    assign sel_alu_src1[0] =inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | inst_or;
 
     // pc to reg1
     assign sel_alu_src1[1] = inst_jal;
@@ -199,7 +225,7 @@ module ID(
 
     
     // rt to reg2
-    assign sel_alu_src2[0] = inst_subu | inst_addu | inst_or | inst_sll;
+    assign sel_alu_src2[0] =inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll;
     
     // imm_sign_extend to reg2
     assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw;
@@ -208,7 +234,7 @@ module ID(
     assign sel_alu_src2[2] = inst_jal;
 
     // imm_zero_extend to reg2
-    assign sel_alu_src2[3] = inst_ori;
+    assign sel_alu_src2[3] = inst_xori | inst_ori;
 
 
 
@@ -217,13 +243,13 @@ module ID(
     assign op_slt = 1'b0;
     assign op_sltu = 1'b0;
     assign op_and = 1'b0;
-    assign op_nor = 1'b0;
+    assign op_nor = inst_nor;
     assign op_or = inst_ori | inst_or;
-    assign op_xor = 1'b0;
-    assign op_sll = inst_sll;
-    assign op_srl = 1'b0;
-    assign op_sra = 1'b0;
-    assign op_lui = inst_lui; 
+    assign op_xor = inst_xori |inst_xor;
+    assign op_sll = inst_sll;//逻辑左移
+    assign op_srl = 1'b0;//逻辑右移
+    assign op_sra = 1'b0;//算术右移
+    assign op_lui = inst_lui;
 
     assign alu_op = {op_add, op_sub, op_slt, op_sltu,
                      op_and, op_nor, op_or, op_xor,
@@ -239,14 +265,14 @@ module ID(
 
 
     // regfile sotre enable
-    assign rf_we =inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
+    assign rf_we =inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
 
 
 
     // store in [rd]
-    assign sel_rf_dst[0] = inst_subu | inst_addu | inst_or | inst_sll;
+    assign sel_rf_dst[0] =inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
     // store in [rt] 
-    assign sel_rf_dst[1] = inst_ori | inst_lui | inst_addiu | inst_lw;
+    assign sel_rf_dst[1] =inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
     // store in [31]
     assign sel_rf_dst[2] = inst_jal;
 
@@ -254,14 +280,10 @@ module ID(
     assign rf_waddr = {5{sel_rf_dst[0]}} & rd 
                     | {5{sel_rf_dst[1]}} & rt
                     | {5{sel_rf_dst[2]}} & 32'd31;
-
+    
     // 0 from alu_res ; 1 from ld_res
     assign sel_rf_res = 1'b0; 
-    
-    //
-    wire [31:0] rdata11;
-    wire [31:0] rdata22;
-    //
+
     assign id_to_ex_bus = {
         id_pc,          // 158:127
         inst,           // 126:95
@@ -277,30 +299,6 @@ module ID(
         rdata22          // 31:0
     };
 
-    //zxy zxy zxy zxy zxy zxy zxy
-    wire ex_id_we;
-    wire [4:0] ex_id_waddr;
-    wire [31:0] ex_id_wdata;
-    wire mem_id_we;
-    wire [4:0] mem_id_waddr;
-    wire [31:0] mem_id_wdata;
-    wire wb_id_we;
-    wire [4:0] wb_id_waddr;
-    wire [31:0] wb_id_wdata;
-    assign ex_id_we=ex_to_id_bus[37];
-    assign ex_id_waddr=ex_to_id_bus[36:32];
-    assign ex_id_wdata=ex_to_id_bus[31:0];
-    assign mem_id_we=mem_to_id_bus[37];
-    assign mem_id_waddr=mem_to_id_bus[36:32];
-    assign mem_id_wdata=mem_to_id_bus[31:0];
-    assign wb_id_we=wb_to_id_bus[37];
-    assign wb_id_waddr=wb_to_id_bus[36:32];
-    assign wb_id_wdata=wb_to_id_bus[31:0];
-    /////////////////////////////
-    //////////////////////
-    assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1));
-    assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2));
-    ////////////////////////
 
     wire br_e;
     wire [31:0] br_addr;
@@ -311,20 +309,23 @@ module ID(
     wire rs_lt_z;
     wire [31:0] pc_plus_4;
     assign pc_plus_4 = id_pc + 32'h4;
-
+ 
     assign rs_eq_rt = (rdata11 == rdata22);
 
-    assign br_e = (inst_beq & rs_eq_rt) | inst_jr | inst_jal;
+    assign br_e = (inst_beq & rs_eq_rt) | inst_jr | inst_jal | (inst_bne & !rs_eq_rt);
     assign br_addr = inst_beq ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0}) 
                     :inst_jr  ? (rdata11)  
-                    :inst_jal ? ({pc_plus_4[31:28],inst[25:0],2'b0}) : 32'b0;
-                    
+                    :inst_jal ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 
+                    :inst_bne ? (pc_plus_4+{{14{inst[15]}},{inst[15:0],2'b00}}) : 32'b0;
 
     assign br_bus = {
         br_e,
         br_addr
     };
-    
+     
 
+
+    assign stallreq_from_id = (ex_is_load  & ex_id_waddr == rs) | (ex_is_load & ex_id_waddr == rt) ;
+    
 
 endmodule
