@@ -72,26 +72,24 @@ module ID(
         wb_rf_wdata
     } = wb_to_rf_bus;
 
-    // //自己添加的
-    // assign {
-    //     wb_id_we,
-    //     wb_id_waddr,
-    //     wb_id_wdata
-    // } = wb_to_id;
+    assign {
+        wb_id_we,
+        wb_id_waddr,
+        wb_id_wdata
+    } = wb_to_id;
 
-    // assign {
-    //     mem_id_we,
-    //     mem_id_waddr,
-    //     mem_id_wdata
-    // } = mem_to_id;
+    assign {
+        mem_id_we,
+        mem_id_waddr,
+        mem_id_wdata
+    } = mem_to_id;
 
-    // assign {
-    //     ex_id_we,
-    //     ex_id_waddr,
-    //     ex_id_wdata
-    // } = ex_to_id;
+    assign {
+        ex_id_we,
+        ex_id_waddr,
+        ex_id_wdata
+    } = ex_to_id;
 
-    //*****************************
     wire [5:0] opcode;
     wire [4:0] rs,rt,rd,sa;
     wire [5:0] func;
@@ -135,8 +133,8 @@ module ID(
     );
     
   
-    // assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1));
-    // assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2));
+    assign rdata11 = (ex_id_we &(ex_id_waddr==rs))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rs)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rs)) ? wb_id_wdata : rdata1));
+    assign rdata22 = (ex_id_we &(ex_id_waddr==rt))?ex_id_wdata: ((mem_id_we &(mem_id_waddr==rt)) ? mem_id_wdata:((wb_id_we &(wb_id_waddr==rt)) ? wb_id_wdata : rdata2));
 
     assign opcode = inst[31:26];
     assign rs = inst[25:21];
@@ -151,19 +149,18 @@ module ID(
     assign offset = inst[15:0];
     assign sel = inst[2:0];
 
-
-    wire inst_ori,//寄存器 rs 中的值与 0 扩展至 32 位的立即数 imm 按位逻辑或，结果写入寄存器 rt 中。
-    inst_lui, //将 16 位立即数 imm 写入寄存器 rt 的高 16 位，寄存器 rt 的低 16 位置 0
-    inst_addiu, //将寄存器 rs 的值与有符号扩展 ．．．．．至 32 位的立即数 imm 相加，结果写入 rt 寄存器中。
-    inst_beq, //如果寄存器 rs 的值等于寄存器 rt 的值则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位
+    wire inst_ori, inst_lui, inst_addiu, inst_beq,
+    //inst_ori 寄存器 rs 中的值与 0 扩展至 32 位的立即数 imm 按位逻辑或，结果写入寄存器 rt 中。
+    //inst_lui 将 16 位立即数 imm 写入寄存器 rt 的高 16 位，寄存器 rt 的低 16 位置 0
+    //inst_addiu 将寄存器 rs 的值与有符号扩展 ．．．．．至 32 位的立即数 imm 相加，结果写入 rt 寄存器中。
+    //inst_beq 如果寄存器 rs 的值等于寄存器 rt 的值则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位
                //并进行有符号扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。
     inst_subu,//将寄存器 rs 的值与寄存器 rt 的值相减，结果写入 rd 寄存器中
     inst_jr,// 无条件跳转。跳转目标为寄存器 rs 中的值
     inst_jal,//无条件跳转。跳转目标由该分支指令对应的延迟槽指令的 PC 的最高 4 位与立即数 instr_index 左移
             //2 位后的值拼接得到。同时将该分支对应延迟槽指令之后的指令的 PC 值保存至第 31 号通用寄存
             //器中。
-    inst_lw,//opcode rs rt imm
-            //将 rs 寄存器的值加上符号扩展后的立即数 imm 得到访存的虚地址，如果地址不是 4 的整数倍
+    inst_lw,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 4 的整数倍
             //则触发地址错例外，否则据此虚地址从存储器中读取连续 4 个字节的值，写入到 rt 寄存器中。
     inst_or,    //寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或，结果写入寄存器 rd 中
     inst_sll,   //由立即数 sa 指定移位量，对寄存器 rt 的值进行逻辑左移，结果写入寄存器 rd 中。
