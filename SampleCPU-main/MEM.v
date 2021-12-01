@@ -53,7 +53,7 @@ module MEM(
     } =  ex_to_mem_bus_r;
 
 
-    assign rf_wdata = (data_ram_wen==4'b0000 && data_ram_en==1'b1) ? data_sram_rdata : sel_rf_res ? mem_result : ex_result;
+    assign rf_wdata = (data_ram_wen==4'b0000 && data_ram_en==1'b1) ? data_sram_rdata : (sel_rf_res) ? mem_result : ex_result;
     assign mem_to_wb_bus = {
         mem_pc,     // 41:38
         rf_we,      // 37

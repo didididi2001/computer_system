@@ -60,8 +60,20 @@ module ID(
             if_to_id_bus_r <= if_to_id_bus;
         end
     end
-    
-    assign inst = inst_sram_rdata;
+
+    reg q;
+    always @(posedge clk) begin
+        if (stall[1]==`Stop) begin
+            q = 1'b1;
+        end
+        else begin
+            q = 1'b0;
+        end
+    end
+    assign inst = (q) ?inst: inst_sram_rdata;
+
+    //assign inst = inst_sram_rdata;
+
     assign {
         ce,
         id_pc
@@ -169,7 +181,9 @@ module ID(
               //位并进行有符号扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到
     inst_xor,//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑异或，结果写入寄存器 rd 中。
     inst_xori,//寄存器 rs 中的值与 0 扩展至 32 位的立即数 imm 按位逻辑异或，结果写入寄存器 rt 中。
-    inst_nor;//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或非，结果写入寄存器 rd 中。
+    inst_nor,//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或非，结果写入寄存器 rd 中。
+    inst_sw;//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，据此虚地址将 rt 寄存器的值存入内存中。
+
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
@@ -210,9 +224,11 @@ module ID(
     assign inst_xor     = op_d[6'b00_0000] && func_d[6'b10_0110];
     assign inst_xori    = op_d[6'b00_1110];
     assign inst_nor     = op_d[6'b00_0000] && func_d[6'b10_0111];
+    assign inst_sw      = op_d[6'b10_1011];
     
     // rs to reg1
-    assign sel_alu_src1[0] =inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | inst_or;
+    assign sel_alu_src1[0] =  inst_nor | inst_xori | inst_sw | inst_xor | inst_ori | inst_addiu |
+                              inst_subu | inst_jr | inst_lw | inst_addu | inst_or;
 
     // pc to reg1
     assign sel_alu_src1[1] = inst_jal;
@@ -225,7 +241,7 @@ module ID(
     assign sel_alu_src2[0] =inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll;
     
     // imm_sign_extend to reg2
-    assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw;
+    assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw | inst_sw;
 
     // 32'b8 to reg2
     assign sel_alu_src2[2] = inst_jal;
@@ -235,7 +251,7 @@ module ID(
 
 
 
-    assign op_add = inst_addiu | inst_lw | inst_addu | inst_jal;
+    assign op_add = inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw;
     assign op_sub = inst_subu;
     assign op_slt = 1'b0;
     assign op_sltu = 1'b0;
@@ -255,21 +271,22 @@ module ID(
 
 
     // load and store enable
-    assign data_ram_en = inst_lw;
+    assign data_ram_en = inst_lw | inst_sw ;
 
     // write enable
-    assign data_ram_wen = inst_lw ? 4'b0000: 4'b1111;
+    assign data_ram_wen = inst_lw ? 4'b0000: inst_sw ? 4'b1111 : 4'b0000;
 
 
-    // regfile sotre enable
-    assign rf_we =inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
+    // regfile store enable
+    assign rf_we =inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | 
+                inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or ;
 
 
 
     // store in [rd]
     assign sel_rf_dst[0] =inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
     // store in [rt] 
-    assign sel_rf_dst[1] =inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
+    assign sel_rf_dst[1] =inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw ;
     // store in [31]
     assign sel_rf_dst[2] = inst_jal;
 

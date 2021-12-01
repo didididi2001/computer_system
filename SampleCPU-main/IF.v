@@ -47,8 +47,7 @@ module IF(
     end
 
 
-    assign next_pc = br_e ? br_addr 
-                   : pc_reg + 32'h4;
+    assign next_pc = br_e ? br_addr : pc_reg + 32'h4;
 
     
     assign inst_sram_en = ce_reg;
