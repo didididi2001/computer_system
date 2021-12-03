@@ -60,7 +60,6 @@ module ID(
             if_to_id_bus_r <= if_to_id_bus;
         end
     end
-<<<<<<< Updated upstream
 
     reg q;
     always @(posedge clk) begin
@@ -75,17 +74,6 @@ module ID(
 
     //assign inst = inst_sram_rdata;
 
-=======
-    always @(posedge clk) begin
-        if (stall[1]==`Stop) begin
-            q = 1'b1;
-        end
-        else begin
-            q = 1'b0;
-        end
-    end
-    assign inst = (q) ? inst: inst_sram_rdata;
->>>>>>> Stashed changes
     assign {
         ce,
         id_pc
@@ -194,16 +182,6 @@ module ID(
     inst_xor,//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑异或，结果写入寄存器 rd 中。
     inst_xori,//寄存器 rs 中的值与 0 扩展至 32 位的立即数 imm 按位逻辑异或，结果写入寄存器 rt 中。
     inst_nor,//寄存器 rs 中的值与寄存器 rt 中的值按位逻辑或非，结果写入寄存器 rd 中。
-<<<<<<< Updated upstream
-    inst_sw,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，据此虚地址将 rt 寄存器的值存入内存中。
-    inst_sltu,//将寄存器 rs 的值与寄存器 rt 中的值进行无符号数比较，如果寄存器 rs 中的值小，则寄存器rd置1,否则寄存器 rd 置0。
-    inst_slt,//将寄存器 rs 的值与寄存器 rt 中的值进行有符号数比较，如果寄存器 rs 中的值小，则寄存器 rd 置1否则寄存器rd置0。
-    inst_slti,//将寄存器 rs 的值与有符号扩展至 32 位的立即数 imm 进行有符号数比较,如果寄存器 rs 中的值小，则寄存器 rt置1；否则寄存器 rt置0。
-    inst_sltiu;//将寄存器 rs 的值与有符号扩展至 32 位的立即数 imm 进行无符号数比较，如果寄存器 rs 中的值
-               //小，则寄存器 rt 置 1；否则寄存器 rt 置 0
-
-
-=======
     inst_sw,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 4 的整数倍
             //则触发地址错例外，否则据此虚地址将 rt 寄存器存入存储器中。
     inst_sltu,//将寄存器 rs 的值与寄存器 rt 中的值进行无符号数比较，如果寄存器 rs 中的值小，则寄存器 rd 置 1；
@@ -229,9 +207,20 @@ module ID(
     inst_srav,//由寄存器 rs 中的值指定移位量，对寄存器 rt 的值进行算术右移，结果写入寄存器 rd 中。
     inst_srl,//由立即数 sa 指定移位量，对寄存器 rt 的值进行逻辑右移，结果写入寄存器 rd 中。
     inst_srlv,//由寄存器 rs 中的值指定移位量，对寄存器 rt 的值进行逻辑右移，结果写入寄存器 rd 中。
-    inst_bgez;//如果寄存器 rs 的值大于等于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有
+    inst_bgez,//如果寄存器 rs 的值大于等于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有
               //符号扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。
->>>>>>> Stashed changes
+    inst_bgtz,//如果寄存器 rs 的值大于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有符号
+              //扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。
+    inst_blez,//如果寄存器 rs 的值小于等于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有
+              //符号扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。
+    inst_bltz,//如果寄存器 rs 的值小于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有符号
+              //扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。
+    inst_bltzal,//如果寄存器 rs 的值小于 0 则转移，否则顺序执行。转移目标由立即数 offset 左移 2 位并进行有符号
+                //扩展的值加上该分支指令对应的延迟槽指令的 PC 计算得到。无论转移与否，将该分支对应延迟槽
+                //指令之后的指令的 PC 值保存至第 31 号通用寄存器中。
+    inst_bgezal,inst_jalr;
+
+
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
@@ -272,22 +261,11 @@ module ID(
     assign inst_xor     = op_d[6'b00_0000] && func_d[6'b10_0110];
     assign inst_xori    = op_d[6'b00_1110];
     assign inst_nor     = op_d[6'b00_0000] && func_d[6'b10_0111];
-<<<<<<< Updated upstream
-    assign inst_sw      = op_d[6'b10_1011];
-=======
     assign inst_sw      = op_d[6'b10_1011]; 
->>>>>>> Stashed changes
     assign inst_sltu    = op_d[6'b00_0000] && func_d[6'b10_1011];
     assign inst_slt     = op_d[6'b00_0000] && func_d[6'b10_1010];
     assign inst_slti    = op_d[6'b00_1010];
     assign inst_sltiu   = op_d[6'b00_1011];
-<<<<<<< Updated upstream
-    
-    // rs to reg1
-    assign sel_alu_src1[0] =  inst_nor | inst_xori | inst_sw | inst_xor | inst_ori | inst_addiu |
-                              inst_subu|  inst_jr  | inst_lw | inst_addu| inst_or  | inst_sltu  | 
-                              inst_slt | inst_slti |inst_sltiu;
-=======
     assign inst_j       = op_d[6'b00_0010]; 
     assign inst_add     = op_d[6'b00_0000] && func_d[6'b10_0000];
     assign inst_addi    = op_d[6'b00_1000];
@@ -299,54 +277,44 @@ module ID(
     assign inst_srav    = op_d[6'b00_0000] && func_d[6'b00_0111];
     assign inst_srl     = op_d[6'b00_0000] && func_d[6'b00_0010];
     assign inst_srlv    = op_d[6'b00_0000] && func_d[6'b00_0110];
-    assign inst_bgez    = op_d[6'b00_0001];
+    assign inst_bgez    = op_d[6'b00_0001] && rt_d[5'b00001];
+    assign inst_bgtz    = op_d[6'b00_0111] && rt_d[5'b00000];
+    assign inst_blez    = op_d[6'b00_0110] && rt_d[5'b00000];
+    assign inst_bltz    = op_d[6'b00_0001] && rt_d[5'b00000];
+    assign inst_bltzal  = op_d[6'b00_0001] && rt_d[5'b10000];
+    assign inst_bgezal  = op_d[6'b00_0001] && rt_d[5'b10001];
+    assign inst_jalr    = op_d[6'b00_0000] && func_d[6'b00_1001];
     
     // rs to reg1
-    assign sel_alu_src1[0] =inst_bgez | inst_srlv | inst_srav | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_sw | inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | inst_or;
->>>>>>> Stashed changes
+    assign sel_alu_src1[0] =inst_bgez | inst_srlv | inst_srav | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_sw | inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | 
+                            inst_or;
 
     // pc to reg1
-    assign sel_alu_src1[1] =  inst_jal;
+    assign sel_alu_src1[1] =  inst_jal | inst_bltzal | inst_bgezal |inst_jalr;
 
     // sa_zero_extend to reg1
     assign sel_alu_src1[2] =inst_srl |inst_sra | inst_sll;
 
     
     // rt to reg2
-<<<<<<< Updated upstream
-    assign sel_alu_src2[0] =inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll | inst_sltu 
-                                     | inst_slt;
-    
-    // imm_sign_extend to reg2
-    assign sel_alu_src2[1] = inst_lui | inst_addiu | inst_lw | inst_sw | inst_slti |inst_sltiu;
-=======
     assign sel_alu_src2[0] =inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll;
     
     // imm_sign_extend to reg2
     assign sel_alu_src2[1] =inst_addi | inst_sltiu | inst_slti | inst_sw | inst_lui | inst_addiu | inst_lw;
->>>>>>> Stashed changes
 
     // 32'b8 to reg2
-    assign sel_alu_src2[2] = inst_jal;
+    assign sel_alu_src2[2] = inst_jal | inst_bltzal | inst_bgezal |inst_jalr;
 
     // imm_zero_extend to reg2
     assign sel_alu_src2[3] = inst_andi | inst_xori | inst_ori;
 
 
 
-<<<<<<< Updated upstream
-    assign op_add = inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw;
-    assign op_sub = inst_subu;
+    assign op_add =inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw | inst_bltzal |inst_bgezal|inst_jalr;
+    assign op_sub =inst_sub | inst_subu;
     assign op_slt = inst_slt | inst_slti; //有符号比较
     assign op_sltu = inst_sltu|inst_sltiu;  //无符号比较
-    assign op_and = 1'b0;
-=======
-    assign op_add =inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw;
-    assign op_sub =inst_sub | inst_subu;
-    assign op_slt = inst_slt | inst_slti;
-    assign op_sltu = inst_sltu | inst_sltiu;
     assign op_and = inst_andi | inst_and;
->>>>>>> Stashed changes
     assign op_nor = inst_nor;
     assign op_or = inst_ori | inst_or;
     assign op_xor = inst_xori |inst_xor;
@@ -361,44 +329,24 @@ module ID(
 
 
 
-<<<<<<< Updated upstream
     // mem load and store enable
-    assign data_ram_en = inst_lw | inst_sw ;
-
-    // mem write enable
-    assign data_ram_wen = inst_lw ? 4'b0000: inst_sw ? 4'b1111 : 4'b0000;
-
-
-    // regfile store enable
-    assign rf_we =inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | 
-                inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or | 
-                inst_sltu  | inst_slt | inst_slti |inst_sltiu;
-=======
-    // load and store enable
     assign data_ram_en = inst_lw | inst_sw;
 
-    // write enable
+    // mem write enable
     assign data_ram_wen = inst_lw ? 4'b0000 : inst_sw ? 4'b1111 : 4'b0000;
 
 
     // regfile sotre enable
-    assign rf_we =inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
->>>>>>> Stashed changes
+    assign rf_we = inst_jalr |inst_bgezal | inst_bltzal|inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
 
 
 
     // store in [rd]
-<<<<<<< Updated upstream
-    assign sel_rf_dst[0] =inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll | inst_sltu | inst_slt;
-    // store in [rt] 
-    assign sel_rf_dst[1] =inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw | inst_slti |inst_sltiu;
-=======
-    assign sel_rf_dst[0] =inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
+    assign sel_rf_dst[0] =inst_jalr |inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
     // store in [rt] 
     assign sel_rf_dst[1] =inst_andi | inst_addi | inst_sltiu | inst_slti | inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
->>>>>>> Stashed changes
     // store in [31]
-    assign sel_rf_dst[2] = inst_jal;
+    assign sel_rf_dst[2] = inst_jal | inst_bltzal | inst_bgezal;
 
     // sel for regfile address
     assign rf_waddr = {5{sel_rf_dst[0]}} & rd 
@@ -433,16 +381,19 @@ module ID(
     wire rs_lt_z;
     wire [31:0] pc_plus_4;
     assign pc_plus_4 = id_pc + 32'h4;
- 
+    assign rs_ge_z  = (rdata11[31] == 1'b0); //大于等于0
+    assign rs_gt_z  = (rdata11[31] == 1'b0 & rdata11 != 32'b0  );  //大于0
+    assign rs_le_z  = (rdata11[31] == 1'b1 | rdata11 == 32'b0  );  //小于等于0
+    assign rs_lt_z  = (rdata11[31] == 1'b1);  //小于0
     assign rs_eq_rt = (rdata11 == rdata22);
-
-    assign br_e = (inst_bgez & (rdata1[31] == 1'b0)) | (inst_beq & rs_eq_rt) | inst_jr | inst_jal | (inst_bne & !rs_eq_rt) | inst_j ;
+    
+    assign br_e =  inst_jalr |(inst_bgezal & rs_ge_z )|( inst_bltzal & rs_lt_z) |(inst_bgtz & rs_gt_z  ) |(inst_bltz & rs_lt_z) |(inst_blez & rs_le_z)| (inst_bgez & rs_ge_z ) | (inst_beq & rs_eq_rt) | inst_jr | inst_jal | (inst_bne & !rs_eq_rt) | inst_j ;
     assign br_addr = inst_beq ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0}) 
-                    :inst_jr  ? (rdata11)  
-                    :inst_jal ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 
-                    :inst_bgez ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0})
-                    :inst_j ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 
-                    :inst_bne ? (pc_plus_4+{{14{inst[15]}},{inst[15:0],2'b00}}) : 32'b0;
+                    :(inst_jr |inst_jalr)  ? (rdata11)  
+                    : inst_jal ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 
+                    : inst_j ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 
+                    :(inst_bgezal|inst_bltzal |inst_blez | inst_bltz |inst_bgez |inst_bgtz ) ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b00})
+                    :inst_bne ? (pc_plus_4 + {{14{inst[15]}},{inst[15:0],2'b00}}) : 32'b0;
 
     assign br_bus = {
         br_e,

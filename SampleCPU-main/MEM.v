@@ -6,11 +6,7 @@ module MEM(
     input wire [`StallBus-1:0] stall,
 
     input wire [`EX_TO_MEM_WD-1:0] ex_to_mem_bus,
-<<<<<<< Updated upstream
     input wire [31:0] data_sram_rdata,
-=======
-    input wire [31:0]data_sram_rdata,
->>>>>>> Stashed changes
     
     output wire [37:0] mem_to_id,
     
