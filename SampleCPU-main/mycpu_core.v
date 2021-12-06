@@ -35,6 +35,7 @@ module mycpu_core(
     wire stallreq_from_id;
     wire stallreq_from_ex;
     wire ex_is_load;
+    wire [65:0] hilo_ex_to_id;
 
     IF u_IF(
     	.clk             (clk             ),
@@ -61,6 +62,7 @@ module mycpu_core(
         .ex_to_id        (ex_to_id        ),
         .mem_to_id       (mem_to_id       ),
         .wb_to_id        (wb_to_id        ),
+        .hilo_ex_to_id   (hilo_ex_to_id   ),
         .id_to_ex_bus    (id_to_ex_bus    ),
         .br_bus          (br_bus          ),
         .stallreq_from_id(stallreq_from_id)
@@ -78,7 +80,8 @@ module mycpu_core(
         .ex_to_id        (ex_to_id        ),
         .data_sram_wdata (data_sram_wdata ),
         .stallreq_from_ex(stallreq_from_ex),
-        .ex_is_load      (ex_is_load      )
+        .ex_is_load      (ex_is_load      ),
+        .hilo_ex_to_id   (hilo_ex_to_id   )
     );
 
     MEM u_MEM(

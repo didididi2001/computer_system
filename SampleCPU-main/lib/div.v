@@ -23,7 +23,7 @@
 module div(
 	input wire rst,							//复位
 	input wire clk,							//时钟
-	input wire signed_div_i,						//是否为有符号除法运算，1位有符号
+	input wire signed_div_i,				//是否为有符号除法运算，1位有符号
 	input wire[31:0] opdata1_i,				//被除数
 	input wire[31:0] opdata2_i,				//除数
 	input wire start_i,						//是否开始除法运算

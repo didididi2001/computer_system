@@ -15,8 +15,8 @@ module EX(
     output wire [37:0] ex_to_id,
     output wire [31:0] data_sram_wdata,
     output wire stallreq_from_ex,
-    output wire ex_is_load
-    
+    output wire ex_is_load,
+    output wire [65:0] hilo_ex_to_id
 );
    
     reg [`ID_TO_EX_WD-1:0] id_to_ex_bus_r;
@@ -43,14 +43,22 @@ module EX(
     wire [2:0] sel_alu_src1;
     wire [3:0] sel_alu_src2;
     wire data_ram_en;
-    wire [3:0] data_ram_wen;
+    wire [3:0] data_ram_wen,data_ram_readen;
     wire rf_we;
     wire [4:0] rf_waddr;
     wire sel_rf_res;
     wire [31:0] rf_rdata1, rf_rdata2;
     reg is_in_delayslot;
 
+
     assign {
+        data_ram_readen,//168:165
+        inst_mthi,      //164
+        inst_mtlo,      //163
+        inst_multu,     //162
+        inst_mult,      //161
+        inst_divu,      //160
+        inst_div,       //159
         ex_pc,          // 148:117
         inst,           // 116:85
         alu_op,         // 84:83
@@ -94,7 +102,9 @@ module EX(
     assign ex_result = alu_result;
 
 
+    
     assign ex_to_mem_bus = {
+        data_ram_readen,//79:76
         ex_pc,          // 75:44
         data_ram_en,    // 43
         data_ram_wen,   // 42:39
@@ -103,43 +113,70 @@ module EX(
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
-    assign  ex_to_id =
-    {   rf_we,          // 37
+    assign  ex_to_id ={   
+        rf_we,          // 37
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
-    assign data_sram_en = data_ram_en;
-    assign data_sram_wen = data_ram_wen;
+    assign data_sram_en = data_ram_en; 
+    assign data_sram_wen = data_ram_wen;//写使能信号
     assign data_sram_addr = ex_result;
     assign data_sram_wdata = rf_rdata2;
 
+    wire hi_wen,lo_wen,inst_mthi,inst_mtlo;
+    wire [31:0] hi_data,lo_data;
+    assign hi_wen = inst_divu | inst_div | inst_mult | inst_multu | inst_mthi;//hi寄存器 写
+    assign lo_wen = inst_divu | inst_div | inst_mult | inst_multu | inst_mtlo;//lo寄存器 写
+
+    assign hi_data = (inst_div|inst_divu) ? div_result[63:32] //高32位为余数
+                    : (inst_mult|inst_multu)?mul_result[63:32] 
+                    : (inst_mthi) ? rf_rdata1
+                    :(32'b0);
+
+    assign lo_data =(inst_div|inst_divu) ? div_result[31:0] //低32位为商
+                    : (inst_mult|inst_multu)?mul_result[31:0] 
+                    : (inst_mtlo) ? rf_rdata1
+                    :(32'b0);  
+
+
+
+    assign hilo_ex_to_id = {
+        hi_wen,         // 65
+        lo_wen,         // 64
+        hi_data,        // 63:32
+        lo_data         // 31:0
+    };
 
 
     
     // MUL part
+    wire inst_mult,inst_multu;
     wire [63:0] mul_result;
     wire mul_signed; // 有符号乘法标记
+    assign mul_signed =   inst_mult  ? 1 
+                        : inst_multu ? 0 
+                        : 0; 
 
     mul u_mul(
     	.clk        (clk            ),
         .resetn     (~rst           ),
         .mul_signed (mul_signed     ),
-        .ina        (      ), // 乘法源操作数1
-        .inb        (      ), // 乘法源操作数2
+        .ina        (rf_rdata1      ), // 乘法源操作数1
+        .inb        (rf_rdata2      ), // 乘法源操作数2
         .result     (mul_result     ) // 乘法结果 64bit
     );
 
     // DIV part
     wire [63:0] div_result;
-    wire inst_div, inst_divu;
+    wire inst_div, inst_divu; //inst_div为有符号除 inst_divu无符号
     wire div_ready_i;
     reg stallreq_for_div;
-    assign stallreq_for_ex = stallreq_for_div;
+    assign stallreq_from_ex = stallreq_for_div;
 
-    reg [31:0] div_opdata1_o;
-    reg [31:0] div_opdata2_o;
+    reg [31:0] div_opdata1_o; //被除数
+    reg [31:0] div_opdata2_o; //除数
     reg div_start_o;
-    reg signed_div_o;
+    reg signed_div_o; //是否是有符号除法
 
     div u_div(
     	.rst          (rst          ),
@@ -150,7 +187,7 @@ module EX(
         .start_i      (div_start_o      ),
         .annul_i      (1'b0      ),
         .result_o     (div_result     ), // 除法结果 64bit
-        .ready_o      (div_ready_i      )
+        .ready_o      (div_ready_i      )// 除法是否结束
     );
 
     always @ (*) begin

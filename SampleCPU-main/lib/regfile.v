@@ -8,8 +8,36 @@ module regfile(
     
     input wire we,
     input wire [4:0] waddr,
-    input wire [31:0] wdata
+    input wire [31:0] wdata,
+
+    input wire hi_r,
+    input wire hi_we,
+    input wire [31:0] hi_data,
+    input wire lo_r,
+    input wire lo_we,
+    input wire [31:0] lo_data,
+    output wire [31:0] hilo_data
 );
+    //自己家的hilo寄存器
+    reg  [31:0] hi_o;
+    reg  [31:0] lo_o;
+    // write
+    always @ (posedge clk) begin
+        if (hi_we) begin
+            hi_o <=  hi_data;
+        end
+    end
+    always @ (posedge clk) begin
+        if (lo_we) begin
+            lo_o <= lo_data;
+        end
+    end
+    //read
+    assign hilo_data = (hi_r) ? hi_o 
+                      :(lo_r) ? lo_o
+                      : (32'b0);
+
+
     reg [31:0] reg_array [31:0];
     // write
     always @ (posedge clk) begin
