@@ -118,10 +118,10 @@ module EX(
         rf_waddr,       // 36:32
         ex_result       // 31:0
     };
-    assign data_sram_en = data_ram_en; 
+    assign data_sram_en = data_ram_en;
     assign data_sram_wen = data_ram_wen;//写使能信号
-    assign data_sram_addr = ex_result;
-    assign data_sram_wdata = rf_rdata2;
+    assign data_sram_addr = ex_result;  //内存的地址
+    assign data_sram_wdata = rf_rdata2;//要写入的数据
 
     wire hi_wen,lo_wen,inst_mthi,inst_mtlo;
     wire [31:0] hi_data,lo_data;
