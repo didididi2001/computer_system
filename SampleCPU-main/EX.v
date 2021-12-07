@@ -156,13 +156,17 @@ module EX(
     assign mul_signed =   inst_mult  ? 1 
                         : inst_multu ? 0 
                         : 0; 
+    
+    wire [31:0] mul_data1,mul_data2;
+    assign mul_data1 = (inst_mult | inst_multu) ? rf_rdata1 : 32'b0;
+    assign mul_data2 = (inst_mult | inst_multu) ? rf_rdata2 : 32'b0;
 
     mul u_mul(
     	.clk        (clk            ),
         .resetn     (~rst           ),
         .mul_signed (mul_signed     ),
-        .ina        (rf_rdata1      ), // 乘法源操作数1
-        .inb        (rf_rdata2      ), // 乘法源操作数2
+        .ina        (mul_data1      ), // 乘法源操作数1
+        .inb        (mul_data2      ), // 乘法源操作数2
         .result     (mul_result     ) // 乘法结果 64bit
     );
 
