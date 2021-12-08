@@ -61,7 +61,6 @@ module ID(
         end
     end
 
-    reg q;
     always @(posedge clk) begin
         if (stall[1]==`Stop) begin
             q <= 1'b1;
@@ -257,9 +256,19 @@ module ID(
     inst_bgezal,inst_jalr,inst_div,inst_divu,
     inst_mflo,//将 LO 寄存器的值写入到寄存器 rd 中
     inst_mfhi,//将 HI 寄存器的值写入到寄存器 rd 中
-    inst_mult,inst_multu,inst_mthi,inst_mtlo,inst_lb;
-
-
+    inst_mult,inst_multu,inst_mthi,inst_mtlo,inst_lb,
+    inst_lbu,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，据此虚地址从存储器中读
+             //取 1 个字节的值并进行 0 扩展，写入到 rt 寄存器中
+    inst_lh,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 2 的整数倍
+            //则触发地址错例外，否则据此虚地址从存储器中读取连续 2 个字节的值并进行符号扩展，写入到
+            //rt 寄存器中。
+    inst_lhu,//将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 2 的整数倍
+             //则触发地址错例外，否则据此虚地址从存储器中读取连续 2 个字节的值并进行 0 扩展，写入到 rt
+             //寄存器中。
+    inst_sb, //将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，据此虚地址将 rt 寄存器的
+             //最低字节存入存储器中。
+    inst_sh; //将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 2 的整数倍
+             //则触发地址错例外，否则据此虚地址将 rt 寄存器的低半字存入存储器中。
     wire op_add, op_sub, op_slt, op_sltu;
     wire op_and, op_nor, op_or, op_xor;
     wire op_sll, op_srl, op_sra, op_lui;
@@ -332,9 +341,14 @@ module ID(
     assign inst_mthi    = op_d[6'b00_0000] && func_d[6'b01_0001];
     assign inst_mtlo    = op_d[6'b00_0000] && func_d[6'b01_0011];
     assign inst_lb      = op_d[6'b10_0000];
-    
+    assign inst_lbu     = op_d[6'b10_0100];
+    assign inst_lh      = op_d[6'b10_0001];
+    assign inst_lhu     = op_d[6'b10_0101];
+    assign inst_sb      = op_d[6'b10_1000];
+    assign inst_sh      = op_d[6'b10_1001];
+
     // rs to reg1
-    assign sel_alu_src1[0] =inst_bgez | inst_srlv | inst_srav | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_sw | inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | 
+    assign sel_alu_src1[0] =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_bgez | inst_srlv | inst_srav | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_sw | inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | 
                             inst_or   | inst_mflo  |inst_mfhi | inst_lb;
 
     // pc to reg1
@@ -348,7 +362,7 @@ module ID(
     assign sel_alu_src2[0] =inst_mfhi|inst_mflo | inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll |inst_div | inst_divu;
     
     // imm_sign_extend to reg2
-    assign sel_alu_src2[1] =inst_addi | inst_sltiu | inst_slti | inst_sw | inst_lui | inst_addiu | inst_lw |inst_lb;
+    assign sel_alu_src2[1] =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_addi | inst_sltiu | inst_slti | inst_sw | inst_lui | inst_addiu | inst_lw |inst_lb;
 
     // 32'b8 to reg2
     assign sel_alu_src2[2] = inst_jal | inst_bltzal | inst_bgezal |inst_jalr;
@@ -358,7 +372,7 @@ module ID(
 
 
 
-    assign op_add = inst_lb | inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw | inst_bltzal |inst_bgezal|inst_jalr;
+    assign op_add =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb | inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw | inst_bltzal |inst_bgezal|inst_jalr;
     assign op_sub =inst_sub | inst_subu;
     assign op_slt = inst_slt | inst_slti; //有符号比较
     assign op_sltu = inst_sltu|inst_sltiu;  //无符号比较
@@ -377,24 +391,29 @@ module ID(
 
 
     // mem load and store enable
-    assign data_ram_en = inst_lw | inst_sw | inst_lb;
+    assign data_ram_en =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_lw | inst_sw | inst_lb;
 
     // mem write enable
     assign data_ram_wen = inst_sw ? 4'b1111 : 4'b0000;
 
     //mem read enable
-    assign data_ram_readen = inst_lw ? 4'b1111 :inst_lb ? 4'b0001 : 4'b0000;
+    assign data_ram_readen =  inst_lw  ? 4'b1111 
+                             :inst_lb  ? 4'b0001 
+                             :inst_lbu ? 4'b0010
+                             :inst_lh  ? 4'b0011
+                             :inst_lhu ? 4'b0100
+                             :4'b0000;
 
 
     // regfile sotre enable
-    assign rf_we =inst_lb| inst_mfhi | inst_mflo | inst_jalr |inst_bgezal | inst_bltzal|inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
+    assign rf_we =inst_lhu | inst_lh | inst_lbu | inst_lb| inst_mfhi | inst_mflo | inst_jalr |inst_bgezal | inst_bltzal|inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
 
 
 
     // store in [rd]
     assign sel_rf_dst[0] = inst_mfhi | inst_mflo | inst_jalr |inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
     // store in [rt] 
-    assign sel_rf_dst[1] = inst_lb |inst_andi | inst_addi | inst_sltiu | inst_slti | inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
+    assign sel_rf_dst[1] = inst_lhu | inst_lh | inst_lbu | inst_lb |inst_andi | inst_addi | inst_sltiu | inst_slti | inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
     // store in [31]
     assign sel_rf_dst[2] = inst_jal | inst_bltzal | inst_bgezal;
 
@@ -444,7 +463,7 @@ module ID(
     assign rs_lt_z  = (rdata11[31] == 1'b1);  //小于0
     assign rs_eq_rt = (rdata11 == rdata22);
     
-    assign br_e =  inst_jalr |(inst_bgezal & rs_ge_z )|( inst_bltzal & rs_lt_z) |(inst_bgtz & rs_gt_z  ) |(inst_bltz & rs_lt_z) |(inst_blez & rs_le_z)| (inst_bgez & rs_ge_z ) | (inst_beq & rs_eq_rt) | inst_jr | inst_jal | (inst_bne & !rs_eq_rt) | inst_j ;
+    assign br_e =  inst_jalr | (inst_bgezal & rs_ge_z ) | ( inst_bltzal & rs_lt_z) | (inst_bgtz & rs_gt_z  ) | (inst_bltz & rs_lt_z) | (inst_blez & rs_le_z) | (inst_bgez & rs_ge_z ) | (inst_beq & rs_eq_rt) | inst_jr | inst_jal | (inst_bne & !rs_eq_rt) | inst_j ;
     assign br_addr = inst_beq ? (pc_plus_4 + {{14{inst[15]}},inst[15:0],2'b0}) 
                     :(inst_jr |inst_jalr)  ? (rdata11)  
                     : inst_jal ? ({pc_plus_4[31:28],inst[25:0],2'b0}) 

@@ -119,24 +119,36 @@ module EX(
         ex_result       // 31:0
     };
     assign data_sram_en = data_ram_en;
-    assign data_sram_wen = data_ram_wen;//写使能信号
+    assign data_sram_wen =   (ex_pc==6'b10_1000 && ex_result == 2'b00 )? 4'b0001 
+                            :(ex_pc==6'b10_1000 && ex_result == 2'b01 )? 4'b0010
+                            :(ex_pc==6'b10_1000 && ex_result == 2'b10 )? 4'b0100
+                            :(ex_pc==6'b10_1000 && ex_result == 2'b11 )? 4'b1000
+                            :(ex_pc==6'b10_1001 && ex_result == 2'b00 )? 4'b0011
+                            :(ex_pc==6'b10_1001 && ex_result == 2'b10 )? 4'b1100
+                            : data_ram_wen;//写使能信号        
     assign data_sram_addr = ex_result;  //内存的地址
-    assign data_sram_wdata = rf_rdata2;//要写入的数据
-
+    assign data_sram_wdata = data_sram_wen==4'b1111 ? rf_rdata2 
+                            :data_sram_wen==4'b0001 ? {{24{rf_rdata2[7]}},rf_rdata2[7:0]}
+                            :data_sram_wen==4'b0010 ? {{24{rf_rdata2[15]}},rf_rdata2[15:8]}
+                            :data_sram_wen==4'b0100 ? {{24{rf_rdata2[23]}},rf_rdata2[23:16]}
+                            :data_sram_wen==4'b1000 ? {{24{rf_rdata2[31]}},rf_rdata2[31:24]}
+                            :data_sram_wen==4'b0011 ? {{16{rf_rdata2[15]}},rf_rdata2[15:0]}
+                            :data_sram_wen==4'b1100 ? {{24{rf_rdata2[31]}},rf_rdata2[31:16]}
+                            :32'b0;
     wire hi_wen,lo_wen,inst_mthi,inst_mtlo;
     wire [31:0] hi_data,lo_data;
     assign hi_wen = inst_divu | inst_div | inst_mult | inst_multu | inst_mthi;//hi寄存器 写
     assign lo_wen = inst_divu | inst_div | inst_mult | inst_multu | inst_mtlo;//lo寄存器 写
 
-    assign hi_data = (inst_div|inst_divu) ? div_result[63:32] //高32位为余数
-                    : (inst_mult|inst_multu)?mul_result[63:32] 
-                    : (inst_mthi) ? rf_rdata1
-                    :(32'b0);
+    assign hi_data =  (inst_div|inst_divu)   ? div_result[63:32] //高32位为余数
+                    : (inst_mult|inst_multu) ? mul_result[63:32] 
+                    : (inst_mthi)            ? rf_rdata1
+                    : (32'b0);
 
-    assign lo_data =(inst_div|inst_divu) ? div_result[31:0] //低32位为商
-                    : (inst_mult|inst_multu)?mul_result[31:0] 
-                    : (inst_mtlo) ? rf_rdata1
-                    :(32'b0);  
+    assign lo_data =  (inst_div|inst_divu)   ? div_result[31:0] //低32位为商
+                    : (inst_mult|inst_multu) ? mul_result[31:0] 
+                    : (inst_mtlo)            ? rf_rdata1
+                    : (32'b0);  
 
 
 
@@ -183,15 +195,15 @@ module EX(
     reg signed_div_o; //是否是有符号除法
 
     div u_div(
-    	.rst          (rst          ),
-        .clk          (clk          ),
-        .signed_div_i (signed_div_o ),
-        .opdata1_i    (div_opdata1_o    ),
-        .opdata2_i    (div_opdata2_o    ),
-        .start_i      (div_start_o      ),
-        .annul_i      (1'b0      ),
-        .result_o     (div_result     ), // 除法结果 64bit
-        .ready_o      (div_ready_i      )// 除法是否结束
+    	.rst          (rst              ),  //复位
+        .clk          (clk              ),  //时钟
+        .signed_div_i (signed_div_o     ),  //是否为有符号除法运算，1位有符号
+        .opdata1_i    (div_opdata1_o    ),  //被除数
+        .opdata2_i    (div_opdata2_o    ),  //除数
+        .start_i      (div_start_o      ),  //是否开始除法运算
+        .annul_i      (1'b0             ),  //是否取消除法运算，1位取消
+        .result_o     (div_result       ),  // 除法结果 64bit
+        .ready_o      (div_ready_i      )   // 除法是否结束
     );
 
     always @ (*) begin
