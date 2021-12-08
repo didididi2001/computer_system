@@ -119,21 +119,21 @@ module EX(
         ex_result       // 31:0
     };
     assign data_sram_en = data_ram_en;
-    assign data_sram_wen =   (ex_pc==6'b10_1000 && ex_result == 2'b00 )? 4'b0001 
-                            :(ex_pc==6'b10_1000 && ex_result == 2'b01 )? 4'b0010
-                            :(ex_pc==6'b10_1000 && ex_result == 2'b10 )? 4'b0100
-                            :(ex_pc==6'b10_1000 && ex_result == 2'b11 )? 4'b1000
-                            :(ex_pc==6'b10_1001 && ex_result == 2'b00 )? 4'b0011
-                            :(ex_pc==6'b10_1001 && ex_result == 2'b10 )? 4'b1100
+    assign data_sram_wen =   (data_ram_readen==4'b0101 && ex_result[1:0] == 2'b00 )? 4'b0001 
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b01 )? 4'b0010
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b10 )? 4'b0100
+                            :(data_ram_readen==4'b0101 && ex_result[1:0] == 2'b11 )? 4'b1000
+                            :(data_ram_readen==4'b0111 && ex_result[1:0] == 2'b00 )? 4'b0011
+                            :(data_ram_readen==4'b0111 && ex_result[1:0]== 2'b10 )? 4'b1100
                             : data_ram_wen;//写使能信号        
     assign data_sram_addr = ex_result;  //内存的地址
     assign data_sram_wdata = data_sram_wen==4'b1111 ? rf_rdata2 
-                            :data_sram_wen==4'b0001 ? {{24{rf_rdata2[7]}},rf_rdata2[7:0]}
-                            :data_sram_wen==4'b0010 ? {{24{rf_rdata2[15]}},rf_rdata2[15:8]}
-                            :data_sram_wen==4'b0100 ? {{24{rf_rdata2[23]}},rf_rdata2[23:16]}
-                            :data_sram_wen==4'b1000 ? {{24{rf_rdata2[31]}},rf_rdata2[31:24]}
-                            :data_sram_wen==4'b0011 ? {{16{rf_rdata2[15]}},rf_rdata2[15:0]}
-                            :data_sram_wen==4'b1100 ? {{24{rf_rdata2[31]}},rf_rdata2[31:16]}
+                            :data_sram_wen==4'b0001 ? {24'b0,rf_rdata2[7:0]}
+                            :data_sram_wen==4'b0010 ? {16'b0,rf_rdata2[7:0],8'b0}
+                            :data_sram_wen==4'b0100 ? {8'b0,rf_rdata2[7:0],16'b0}
+                            :data_sram_wen==4'b1000 ? {rf_rdata2[7:0],24'b0}
+                            :data_sram_wen==4'b0011 ? {16'b0,rf_rdata2[15:0]}
+                            :data_sram_wen==4'b1100 ? {rf_rdata2[15:0],16'b0}
                             :32'b0;
     wire hi_wen,lo_wen,inst_mthi,inst_mtlo;
     wire [31:0] hi_data,lo_data;

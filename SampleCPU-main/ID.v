@@ -402,6 +402,8 @@ module ID(
                              :inst_lbu ? 4'b0010
                              :inst_lh  ? 4'b0011
                              :inst_lhu ? 4'b0100
+                             :inst_sb  ? 4'b0101
+                             :inst_sh  ? 4'b0111
                              :4'b0000;
 
 
