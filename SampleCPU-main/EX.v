@@ -165,7 +165,7 @@ module EX(
     wire inst_mult,inst_multu;
     wire [63:0] mul_result;
 
-    //****************************************************************
+    //*************原有的  booth-Wallace 乘法器*************************
     // wire mul_signed; // 有符号乘法标记
     // assign mul_signed =   inst_mult  ? 1 
     //                     : inst_multu ? 0 
@@ -183,14 +183,15 @@ module EX(
     //     .inb        (mul_opdata2_o      ), // 乘法源操作数2
     //     .result     (mul_result     ) // 乘法结果 64bit
     // );
-    //*************************************************************
+    //*****************************************************************
 
-    //自己的乘法器
+    //自己家的32周期移位乘法器
+    //******************************************************************
     reg stallreq_for_mul;
     wire mul_ready_i;
     reg signed_mul_o; //是否是有符号乘法
-    reg [31:0] mul_opdata1_o; //被除数
-    reg [31:0] mul_opdata2_o; //除数
+    reg [31:0] mul_opdata1_o;
+    reg [31:0] mul_opdata2_o;
     reg mul_start_o;
     mymul my_mul(
         .rst            (rst           ),
@@ -268,6 +269,8 @@ module EX(
             endcase
         end
     end
+    //******************************************************************
+
 
 
 

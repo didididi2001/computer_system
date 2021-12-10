@@ -1,4 +1,10 @@
+/**
+ * @Author:zht、szw
+ * @Date: 2021-12-10
+ */
+
 `include "lib/defines.vh"
+
 module mymul(
 	input wire rst,							//复位
 	input wire clk,							//时钟
@@ -15,9 +21,6 @@ reg [63:0] ap;
 reg [5:0] i;//进行到第几位
 reg [1:0] state;// 00:空闲  10:开始   11:结束
 
-
-
-
 always @ (posedge clk) begin
 		if (rst) begin
 			state <= `MulFree;
@@ -26,22 +29,25 @@ always @ (posedge clk) begin
 		end else begin
 			case(state)			
 				`MulFree: begin			//乘法器空闲
+                    if (start_i== `MulStart) begin
                         state <= `MulOn;
+                        i <= 6'b00_0000;
 					    if(signed_mul_i == 1'b1 && a_o[31] == 1'b1) begin			//被乘数为负数
 								temp_opa = ~a_o + 1;
 							end else begin
 								temp_opa = a_o;
 							end
-						if (signed_mul_i == 1'b1 && b_o[31] == 1'b1 ) begin			//乘数除数为负数
+						if(signed_mul_i == 1'b1 && b_o[31] == 1'b1 ) begin			//乘数除数为负数
 								temp_opb = ~b_o + 1;
 							end else begin
 								temp_opb = b_o;
 							end
-                        ap = {32'b0,temp_opa};
+                        ap <= {32'b0,temp_opa};
 						
 						ready_o <= `MulResultNotReady;
 						result_o <= {`ZeroWord, `ZeroWord};
-					
+                        pv <= 64'b0;
+                    end
 				end				
 				
 				`MulOn: begin				//乘法运算
@@ -62,7 +68,7 @@ always @ (posedge clk) begin
 							    pv <= ~pv + 1;
 							end
 							state <= `MulEnd;
-							i <= 6'b000000;
+							i <= 6'b00_0000;
 						end
 					   
 				end
