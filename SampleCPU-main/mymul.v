@@ -1,0 +1,86 @@
+`timescale 1ns / 1ps
+module mul(
+	input wire rst,							//复位
+	input wire clk,							//时钟
+	input wire signed_mul_i,				//是否为有符号乘法运算，1位有符号
+	input wire[31:0] a_o,				//被乘数
+	input wire[31:0] b_o,				//乘数
+	input wire start_i,						//是否开始乘法运算
+	output reg[63:0] result_o,				//乘法运算结果
+	output reg ready_o						//乘法运算是否结束
+);
+reg [31:0] temp_opa,temp_opb;
+reg [63:0] pv;
+reg [63:0] ap;
+reg [5:0] i;//进行到第几位
+
+
+
+
+
+always @ (posedge clk) begin
+		if (rst) begin
+			state <= `MulFree;
+			result_o <= {`ZeroWord,`ZeroWord};
+			ready_o <= `MulResultNotReady;
+		end else begin
+			case(state)			
+				`MulFree: begin			//乘法器空闲
+                        state <= `DivOn;
+					    if(signed_div_i == 1'b1 && a_o[31] == 1'b1) begin			//被乘数为负数
+								temp_opa = ~a_o + 1;
+							end else begin
+								temp_opa = a_o;
+							end
+						if (signed_div_i == 1'b1 && b_o[31] == 1'b1 ) begin			//乘数除数为负数
+								temp_opb = ~b_o + 1;
+							end else begin
+								temp_opb = b_o;
+							end
+                        ap = {32'b0,temp_opa};
+						dividend <= {`ZeroWord, `ZeroWord};
+						dividend[32: 1] <= temp_op1;
+						divisor <= temp_op2;
+						ready_o <= `MulResultNotReady;
+						result_o <= {`ZeroWord, `ZeroWord};
+					
+				end				
+				
+				`MulOn: begin				//乘法运算
+                        if(i != 6'b100000) begin
+                            if(temp_opb[0]==1'b1) begin
+								pv <= pv + ap
+								ap <= {ap[62:0],1'b0}
+								temp_opb <= {1'b0,temp_opb[31:1]};
+							end
+							else begin 
+                                ap <= {ap[62:0],1'b0}
+								temp_opb <= {1'b0,temp_opb[31:1]};
+							end 	
+                            i <= i + 1;
+                        end
+						else begin
+							if ((signed_div_i == 1'b1) && ((o_a[31] ^ o_b[31]) == 1'b1))begin
+							    pv <= ~pv + 1;
+							end
+							state <= `DivEnd;
+							i <= 6'b000000;
+						end
+					   
+				end
+				
+				`DivEnd: begin			//除法结束
+					result_o <= pv;
+					ready_o <= `MulResultReady;
+					if (start_i == `MulStop) begin
+						state <= `MulFree;
+						ready_o <= `MulResultNotReady;
+						result_o <= {`ZeroWord, `ZeroWord};
+					end
+				end
+				
+			endcase
+		end
+	end
+
+endmodule

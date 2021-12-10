@@ -93,7 +93,7 @@ module div(
 							end else begin
 								dividend <= {div_temp[31:0],dividend[31:0], 1'b1};
 							end
-							cnt <= cnt +1;		//除法运算次数
+							cnt <= cnt + 1;		//除法运算次数
 						end	else begin
 							if ((signed_div_i == 1'b1) && ((opdata1_i[31] ^ opdata2_i[31]) == 1'b1)) begin
 								dividend[31:0] <= (~dividend[31:0] + 1);
