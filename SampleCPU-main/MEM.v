@@ -66,12 +66,7 @@ module MEM(
                         : (data_ram_readen==4'b0011 && data_ram_en==1'b1 && ex_result[1:0]==2'b10) ?({{16{data_sram_rdata[31]}},data_sram_rdata[31:16]})
                         : (data_ram_readen==4'b0100 && data_ram_en==1'b1 && ex_result[1:0]==2'b00) ?({16'b0,data_sram_rdata[15:0]})
                         : (data_ram_readen==4'b0100 && data_ram_en==1'b1 && ex_result[1:0]==2'b10) ?({16'b0,data_sram_rdata[31:16]})
-                    
-                        
-                        
-        
                         : ex_result;
-    
     assign mem_to_wb_bus = {
         mem_pc,     // 41:38
         rf_we,      // 37
