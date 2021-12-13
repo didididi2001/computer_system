@@ -33,17 +33,16 @@ always @ (posedge clk) begin
                         state <= `MulOn;
                         i <= 6'b00_0000;
 					    if(signed_mul_i == 1'b1 && a_o[31] == 1'b1) begin			//被乘数为负数
-								temp_opa = ~a_o + 1;
-							end else begin
-								temp_opa = a_o;
-							end
+							temp_opa = ~a_o + 1;
+						end else begin
+							temp_opa = a_o;
+						end
 						if(signed_mul_i == 1'b1 && b_o[31] == 1'b1 ) begin			//乘数除数为负数
 								temp_opb = ~b_o + 1;
-							end else begin
-								temp_opb = b_o;
-							end
+						end else begin
+							temp_opb = b_o;
+						end
                         ap <= {32'b0,temp_opa};
-						
 						ready_o <= `MulResultNotReady;
 						result_o <= {`ZeroWord, `ZeroWord};
                         pv <= 64'b0;
