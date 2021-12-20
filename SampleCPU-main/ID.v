@@ -267,6 +267,7 @@ module ID(
              //寄存器中。
     inst_sb, //将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，据此虚地址将 rt 寄存器的
              //最低字节存入存储器中。
+    inst_lsa,
     inst_sh; //将 base 寄存器的值加上符号扩展后的立即数 offset 得到访存的虚地址，如果地址不是 2 的整数倍
              //则触发地址错例外，否则据此虚地址将 rt 寄存器的低半字存入存储器中。
     wire op_add, op_sub, op_slt, op_sltu;
@@ -346,10 +347,11 @@ module ID(
     assign inst_lhu     = op_d[6'b10_0101];
     assign inst_sb      = op_d[6'b10_1000];
     assign inst_sh      = op_d[6'b10_1001];
+    assign inst_lsa     = op_d[6'b01_1100] && func_d[6'b11_0111];
 
     // rs to reg1
     assign sel_alu_src1[0] =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_bgez | inst_srlv | inst_srav | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_sw | inst_nor | inst_xori | inst_xor | inst_ori | inst_addiu | inst_subu | inst_jr | inst_lw | inst_addu | 
-                            inst_or   | inst_mflo  |inst_mfhi | inst_lb;
+                            inst_or   | inst_mflo  |inst_mfhi | inst_lb |inst_lsa;
 
     // pc to reg1
     assign sel_alu_src1[1] =  inst_jal | inst_bltzal | inst_bgezal |inst_jalr;
@@ -359,7 +361,7 @@ module ID(
 
     
     // rt to reg2
-    assign sel_alu_src2[0] =inst_mfhi|inst_mflo | inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll |inst_div | inst_divu;
+    assign sel_alu_src2[0] =inst_lsa|inst_mfhi|inst_mflo | inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor  | inst_subu | inst_addu | inst_or | inst_sll |inst_div | inst_divu;
     
     // imm_sign_extend to reg2
     assign sel_alu_src2[1] =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu | inst_addi | inst_sltiu | inst_slti | inst_sw | inst_lui | inst_addiu | inst_lw |inst_lb;
@@ -372,7 +374,7 @@ module ID(
 
 
 
-    assign op_add =inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb | inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw | inst_bltzal |inst_bgezal|inst_jalr;
+    assign op_add =inst_lsa|inst_sh | inst_sb | inst_lhu | inst_lh | inst_lbu |  inst_lb | inst_addi | inst_add | inst_addiu | inst_lw | inst_addu | inst_jal | inst_sw | inst_bltzal |inst_bgezal|inst_jalr;
     assign op_sub =inst_sub | inst_subu;
     assign op_slt = inst_slt | inst_slti; //有符号比较
     assign op_sltu = inst_sltu|inst_sltiu;  //无符号比较
@@ -408,12 +410,12 @@ module ID(
 
 
     // regfile sotre enable
-    assign rf_we =inst_lhu | inst_lh | inst_lbu | inst_lb| inst_mfhi | inst_mflo | inst_jalr |inst_bgezal | inst_bltzal|inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
+    assign rf_we =inst_lsa|inst_lhu | inst_lh | inst_lbu | inst_lb| inst_mfhi | inst_mflo | inst_jalr |inst_bgezal | inst_bltzal|inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_andi | inst_and | inst_sub | inst_addi | inst_add | inst_sltiu | inst_slti | inst_slt | inst_sltu | inst_nor |inst_xori | inst_xor | inst_sll | inst_ori | inst_lui | inst_addiu | inst_subu | inst_jal | inst_lw | inst_addu | inst_or;
 
 
 
     // store in [rd]
-    assign sel_rf_dst[0] = inst_mfhi | inst_mflo | inst_jalr |inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
+    assign sel_rf_dst[0] = inst_lsa|inst_mfhi | inst_mflo | inst_jalr |inst_srl | inst_srlv | inst_srav | inst_sra | inst_sllv | inst_and | inst_sub | inst_add | inst_slt | inst_sltu | inst_nor | inst_xor | inst_subu | inst_addu | inst_or | inst_sll;
     // store in [rt] 
     assign sel_rf_dst[1] = inst_lhu | inst_lh | inst_lbu | inst_lb |inst_andi | inst_addi | inst_sltiu | inst_slti | inst_xori | inst_ori | inst_lui | inst_addiu | inst_lw;
     // store in [31]
@@ -426,6 +428,14 @@ module ID(
     
     // 0 from alu_res ; 1 from ld_res
     assign sel_rf_res = 1'b0; 
+
+    //LSA指令 最后一次加指令测试的内容
+    wire [31:0] rdata111;
+    assign rdata111 = (inst_lsa &inst[7:6]==2'b11) ? {rdata11[27:0] ,4'b0}
+                    :(inst_lsa & inst[7:6]==2'b10) ? {rdata11[28:0] ,3'b0}
+                    :(inst_lsa & inst[7:6]==2'b01) ? {rdata11[29:0] ,2'b0}
+                    :(inst_lsa & inst[7:6]==2'b00) ? {rdata11[30:0] ,1'b0}
+                    :rdata11;
 
     assign id_to_ex_bus = {
         data_ram_readen,//168:165
@@ -445,7 +455,7 @@ module ID(
         rf_we,          // 70
         rf_waddr,       // 69:65
         sel_rf_res,     // 64
-        rdata11,         // 63:32
+        rdata111,         // 63:32
         rdata22          // 31:0
     };
 
